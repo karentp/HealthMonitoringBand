@@ -1,4 +1,5 @@
-#include
+#include <Wire.h>
+#include <MPU6050.h>
 const int MPU_addr = 0x68; // I2C direccion del  the MPU-6050
 int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
 float acelerometro_eje_x = 0, acelerometro_eje_y = 0, acelerometro_eje_z = 0, giroscopio_eje_x = 0, giroscopio_eje_y = 0, giroscopio_eje_z = 0;
