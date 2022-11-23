@@ -1,147 +1,127 @@
 #include <Wire.h>
 #include <MPU6050.h>
-const int MPU_addr = 0x68; // I2C direccion del  the MPU-6050
-int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
-float acelerometro_eje_x = 0, acelerometro_eje_y = 0, acelerometro_eje_z = 0, giroscopio_eje_x = 0, giroscopio_eje_y = 0, giroscopio_eje_z = 0;
+const int MPU_addr=0x68;  // I2C address of the MPU-6050
+int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
+float ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
+
+//int data[STORE_SIZE][5]; //array for saving past data
+//byte currentIndex=0; //stores current data array index (0-255)
+boolean fall = false; //stores if a fall has occurred
+boolean trigger1=false; //stores if first trigger (lower threshold) has occurred
+boolean trigger2=false; //stores if second trigger (upper threshold) has occurred
+boolean trigger3=false; //stores if third trigger (orientation change) has occurred
+
+byte trigger1count=0; //stores the counts past since trigger 1 was set true
+byte trigger2count=0; //stores the counts past since trigger 2 was set true
+byte trigger3count=0; //stores the counts past since trigger 3 was set true
+int angleChange=0;
 
 
+void setup(){
+pinMode (8, OUTPUT);
 
-byte limite_bajo_contador = 0; 
-byte limite_alto_contador = 0; 
-byte cambio_orientancion_contador = 0; 
-int cambio_angulo = 0;
-boolean caida = false;     // true si una caida ocurre
-boolean limite_bajo = false; // true si se supera el limite bajo
-boolean limite_alto = false; // true si se supera el limite alto
-boolean cambio_orientancion = false; // true si la orientacion ha cambiado
+ Wire.begin();
+ Wire.beginTransmission(MPU_addr);
+ Wire.write(0x6B);  // PWR_MGMT_1 register
+ Wire.write(0);     // set to zero (wakes up the MPU-6050)
+ Wire.endTransmission(true);
+ Serial.begin(9600);
 
-void setup()
-{
-    Wire.begin();
-    Wire.beginTransmission(MPU_addr);
-    Wire.write(0x6B); // registro PWR_MGMT_1 
-    Wire.write(0);    // colocamos el registro en 0 para levantar el MPU-6050
-    Wire.endTransmission(true);
-    Serial.begin(9600);
+ pinMode(11, OUTPUT);
+ digitalWrite(11, HIGH);
+}
+void loop(){
 
-    pinMode(11, OUTPUT);
-    digitalWrite(11, HIGH);
+ mpu_read();
+ //2050, 77, 1947 are values for calibration of accelerometer
+ // values may be different for you
+ ax = (AcX-2600)/16384.00;
+ ay = (AcY+400)/16384.00;
+ az = (AcZ-2000)/16300;
+
+
+ //270, 351, 136 for gyroscope
+ gx = (GyX+1490)/131.07;
+ gy = (GyY-380)/131.07;
+ gz = (GyZ+1090)/131.07;
+
+
+// calculating Amplitute vactor for 3 axis
+ float Raw_AM = pow(pow(ax,2)+pow(ay,2)+pow(az,2),0.5);
+ int AM = Raw_AM * 10;  // as values are within 0 to 1, I multiplied 
+                        // it by for using if else conditions 
+Serial.println(AM);
+
+ //Serial.println(PM);
+ //delay(500);
+
+ if (trigger3==true){
+    trigger3count++;
+    //Serial.println(trigger3count);
+    if (trigger3count>=8){ 
+       angleChange = pow(pow(gx,2)+pow(gy,2)+pow(gz,2),0.5);
+       //delay(10);
+       if ((angleChange>=0) && (angleChange<=10)){ //if orientation changes remains between 0-10 degrees
+           fall=true; trigger3=false; trigger3count=0;
+             }
+        else{ //user regained normal orientation
+          trigger3=false; trigger3count=0;
+          Serial.println("TRIGGER 3 DESACTIVADO");
+       }
+     }
+  }
+ if (fall==true){ //in event of a fall detection
+   Serial.println("HAY UNA CAIDA");
+   fall = false;
+   trigger3=false;
+   trigger2=false;
+   trigger1=false;
+   delay(1000);
+  // exit(1);
+   }
+   if (trigger2count>=6){ //allow 0.5s for orientation change
+   trigger2=false; trigger2count=0;
+   Serial.println("TRIGGER 2 DESACTIVADO");
+   }
+ if (trigger1count>=12){ //allow 0.5s for AM to break upper threshold
+   trigger1=false; trigger1count=0;
+   Serial.println("TRIGGER 1 DESACTIVADO");
+   }
+ if (trigger2==true){
+   trigger2count++;
+   //angleChange=acos(((double)x*(double)bx+(double)y*(double)by+(double)z*(double)bz)/(double)AM/(double)BM);
+   angleChange = pow(pow(gx,2)+pow(gy,2)+pow(gz,2),0.5);
+   if (angleChange>=30 && angleChange<=400){ //if orientation changes by between 80-100 degrees
+      Serial.println("MOVIMIENTO CANDIDATO A CAERSE");   
+     trigger3=true; trigger2=false; trigger2count=0;
+       }
+   }
+ if (trigger1==true){
+   trigger1count++;
+   Serial.println(AM);
+   if (AM>=15){ //if AM breaks upper threshold (3g)
+     trigger2=true;
+     trigger1=false; trigger1count=0;
+     }
+   }
+ if (AM>=11 && trigger2==false){ //if AM breaks lower threshold (0.4g)
+   trigger1=true;
+
+   }
+//It appears that delay is needed in order not to clog the port
+ delay(100);
 }
 
-
-void lectura_mpu()
-{
-    Wire.beginTransmission(MPU_addr);
-    Wire.write(0x3B); // registro ACCEL_XOUT_H
-    Wire.endTransmission(false);
-    Wire.requestFrom(MPU_addr, 14, true); // se solicitan 14 registros
-    // Registros
-    AcX = Wire.read() << 8 | Wire.read(); // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
-    AcY = Wire.read() << 8 | Wire.read(); // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
-    AcZ = Wire.read() << 8 | Wire.read(); // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-    Tmp = Wire.read() << 8 | Wire.read(); // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
-    GyX = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
-    GyY = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
-    GyZ = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-}
-
-void loop()
-{
-
-    lectura_mpu();
-    // Se calibra el giroscopio
-    giroscopio_eje_x = (GyX + 270) / 131.07;
-    giroscopio_eje_y = (GyY - 351) / 131.07;
-    giroscopio_eje_z = (GyZ + 136) / 131.07;
-
-    // Se calibra el acelerometro
-    acelerometro_eje_x = (AcX - 2050) / 16384.00;
-    acelerometro_eje_y = (AcY - 77) / 16384.00;
-    acelerometro_eje_z = (AcZ - 1947) / 16384.00;
-
-    // Calcular la amplitud en los tres ejes
-    float Raw_amplitud = pow(pow(acelerometro_eje_x, 2) + pow(acelerometro_eje_y, 2) + pow(acelerometro_eje_z, 2), 0.5);
-    int amplitud = Raw_amplitud * 10; 
-    Serial.println(amplitud);
-
-
-    if (cambio_orientancion == true)
-    {
-        cambio_orientancion_contador++;
-        Serial.println(cambio_orientancion_contador);
-        if (cambio_orientancion_contador >= 10)
-        {
-            cambio_angulo = pow(pow(giroscopio_eje_x, 2) + pow(giroscopio_eje_y, 2) + pow(giroscopio_eje_z, 2), 0.5);
-            delay(10);
-            Serial.println(cambio_angulo);
-            if ((cambio_angulo >= 0) && (cambio_angulo <= 10)) //Si la orientacion cambia entre 0 y 10 grados
-            { 
-                caida = true;
-                cambio_orientancion = false;
-                cambio_orientancion_contador = 0;
-                Serial.println(cambio_angulo);
-            }
-            else // La orientacion vuelve a ser normal
-            { 
-                cambio_orientancion = false;
-                cambio_orientancion_contador = 0;
-                Serial.println("CAMBIO DE ORIENTACION DETECTADOo");
-            }
-        }
-    }
-    if (caida == true) // Se detecta una caída
-    { 
-        Serial.println("CAÍDA DETECTADA");
-        digitalWrite(11, LOW);
-        delay(20);
-        digitalWrite(11, HIGH);
-        caida = false;
-        
-    }
-    if (limite_alto_contador >= 6)
-    { 
-        limite_alto = false;
-        limite_alto_contador = 0;
-        Serial.println("LIMITE ALTO ACTIVADO");
-    }
-    if (limite_bajo_contador >= 6)
-    { 
-        limite_bajo = false;
-        limite_bajo_contador = 0;
-        Serial.println("LIMITE BAJO DESACTIVADO");
-    }
-    if (limite_alto == true)
-    {
-        limite_alto_contador++;
-        // cambio_angulo=acos(((double)x*(double)bx+(double)y*(double)by+(double)z*(double)bz)/(double)AM/(double)BM);
-        cambio_angulo = pow(pow(giroscopio_eje_x, 2) + pow(giroscopio_eje_y, 2) + pow(giroscopio_eje_z, 2), 0.5);
-        Serial.println(cambio_angulo);
-        if (cambio_angulo >= 30 && cambio_angulo <= 400) // Si la orientacion cambia de 80-100 grados
-        { 
-            cambio_orientancion = true;
-            limite_alto = false;
-            limite_alto_contador = 0;
-            Serial.println(cambio_angulo);
-            Serial.println("CAMBIO DE ORIENTACION DETECTADO");
-        }
-    }
-    if (limite_bajo == true)
-    {
-        limite_bajo_contador++;
-        if (amplitud >= 12)
-        { 
-            limite_alto = true;
-            Serial.println("LIMITE ALTO ACTIVADO");
-            limite_bajo = false;
-            limite_bajo_contador = 0;
-        }
-    }
-    if (amplitud <= 2 && limite_alto == false)
-    { 
-        limite_bajo = true;
-        Serial.println("LIMITE BAJO ACTIVADO");
-    }
-    // Delay para no sobrecargar el puerto
-    delay(100);
-}
-
+void mpu_read(){
+ Wire.beginTransmission(MPU_addr);
+ Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
+ Wire.endTransmission(false);
+ Wire.requestFrom(MPU_addr,14,true);  // request a total of 14 registers
+ AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)    
+ AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+ AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+ Tmp=Wire.read()<<8|Wire.read();  // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
+ GyX=Wire.read()<<8|Wire.read();  // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
+ GyY=Wire.read()<<8|Wire.read();  // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
+ GyZ=Wire.read()<<8|Wire.read();  // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
+ }
