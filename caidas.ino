@@ -72,6 +72,12 @@ Serial.println(AM);
   }
  if (fall==true){ //in event of a fall detection
    Serial.println("HAY UNA CAIDA");
+   digitalWrite(11, LOW);
+   delay(20);
+   digitalWrite(11, HIGH);
+   digitalWrite(8, HIGH);
+   delay(500);
+   digitalWrite(8, LOW);
    fall = false;
    trigger3=false;
    trigger2=false;
