@@ -1,7 +1,7 @@
 #define USE_ARDUINO_INTERRUPTS true // Set-up low-level interrupts for most acurate BPM math.
 #include <PulseSensorPlayground.h> // Includes the PulseSensorPlayground Library.
-
-
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 2,1,0,4,5,6,7,3, POSITIVE);
  
 // Variables
 const int PulseWire = 0; // PulseSensor PURPLE WIRE connected to ANALOG PIN 0
@@ -14,7 +14,7 @@ PulseSensorPlayground pulseSensor; // Creates an instance of the PulseSensorPlay
 void setup() {
  
 Serial.begin(9600); // For Serial Monitor
-
+lcd.begin(16,2);
  
 // Configure the PulseSensor object, by assigning our variables to it.
 pulseSensor.analogInput(PulseWire);
@@ -23,7 +23,7 @@ pulseSensor.setThreshold(Threshold);
  
 // Double-check the "pulseSensor" object was created and "began" seeing a signal.
 if (pulseSensor.begin()) {
-
+lcd.print(" Monitoreo de Ritmo Cardiaco");
  
 }
 }
@@ -37,7 +37,9 @@ Serial.println("♥ Pulso Cardiaco detectado ! "); // If test is "true", print a
 Serial.print("BPM: "); // Print phrase "BPM: "
 Serial.println(myBPM); // Print the value inside of myBPM.
 
-
+lcd.print("Pulso Cardiaco detectado !"); // If test is "true", print a message "a heartbeat happened".
+lcd.print("BPM: "); // Print phrase "BPM: "
+lcd.print(myBPM);
 }
 delay(20); // considered best practice in a simple sketch.
 }
