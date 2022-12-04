@@ -46,11 +46,11 @@ TfLiteTensor* tflOutputTensor = nullptr;
 // be adjusted based on the model you are using
 constexpr int tensorArenaSize = 8 * 1024;
 byte tensorArena[tensorArenaSize] __attribute__((aligned(16)));
-
+const int pinBuzzer = 10;
 // array to map gesture index to a name
 const char* GESTURES[] = {
-  "cayendo2",
-  "punch"
+  "caida",
+  "punch1"
 };
 
 #define NUM_GESTURES (sizeof(GESTURES) / sizeof(GESTURES[0]))
@@ -133,7 +133,8 @@ void loop() {
       tflInputTensor->data.f[samplesRead * 6 + 5] = (gZ + 2000.0) / 4000.0;
 
       samplesRead++;
-
+      digitalWrite(10, LOW);
+      digitalWrite(8, LOW);
       if (samplesRead == numSamples) {
         // Run inferencing
         TfLiteStatus invokeStatus = tflInterpreter->Invoke();
@@ -148,14 +149,28 @@ void loop() {
           Serial.print(GESTURES[i]);
           Serial.print(": ");
           Serial.println(tflOutputTensor->data.f[i], 6);
-          if (tflOutputTensor->data.f[i>=0.4]){
+          if (tflOutputTensor->data.f[i]>= 0.4 && GESTURES[i]=="caida"){
             Serial.println("CAIDAAA");
-            digitalWrite(10, LOW);
-            delay(20);
-            digitalWrite(10, HIGH);
-            digitalWrite(8, HIGH);
+            tone(pinBuzzer, 440);
+            delay(1000);
+
+            //detener tono durante 500ms  
+            noTone(pinBuzzer);
             delay(500);
-            digitalWrite(8, LOW);
+
+            //generar tono de 523Hz durante 500ms, y detenerlo durante 500ms.
+            tone(pinBuzzer, 523, 300);
+            delay(500);
+            tone(pinBuzzer, 440);
+            delay(1000);
+
+            //detener tono durante 500ms  
+            noTone(pinBuzzer);
+            delay(500);
+
+            //generar tono de 523Hz durante 500ms, y detenerlo durante 500ms.
+            tone(pinBuzzer, 523, 300);
+            delay(500);
           }
         }
         Serial.println();
