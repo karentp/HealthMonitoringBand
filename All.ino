@@ -10,6 +10,7 @@
 #include <tensorflow/lite/version.h>
 #include "model.h"
 
+LiquidCrystal_I2C lcd(0x27, 2,1,0,4,5,6,7,3, POSITIVE);
 const float accelerationThreshold = 2.5; // threshold of significant in G's
 const int numSamples = 119;
 
@@ -36,7 +37,7 @@ const int pinBuzzer = 10;
 // array to map gesture index to a name
 const char *GESTURES[] = {
     "caida",
-    "punch1"};
+    "caminando"};
 
 #define NUM_GESTURES (sizeof(GESTURES) / sizeof(GESTURES[0]))
 
