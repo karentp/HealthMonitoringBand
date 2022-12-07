@@ -20,15 +20,15 @@ const int PULSE_FADE = 5;
 const int THRESHOLD = 550; 
 int samplesRead = numSamples;
 
-// global variables used for TensorFlow Lite (Micro)
-//tflite::MicroErrorReporter tflErrorReporter;
+//global variables used for TensorFlow Lite (Micro)
+tflite::MicroErrorReporter tflErrorReporter;
 
 // pull in all the TFLM ops, you can remove this line and
 // only pull in the TFLM ops you need, if would like to reduce
 // the compiled size of the sketch.
-//tflite::AllOpsResolver tflOpsResolver;
+tflite::AllOpsResolver tflOpsResolver;
 
-/*const tflite::Model *tflModel = nullptr;
+const tflite::Model *tflModel = nullptr;
 tflite::MicroInterpreter *tflInterpreter = nullptr;
 TfLiteTensor *tflInputTensor = nullptr;
 TfLiteTensor *tflOutputTensor = nullptr;
@@ -36,7 +36,7 @@ TfLiteTensor *tflOutputTensor = nullptr;
 // Create a static memory buffer for TFLM, the size may need to
 // be adjusted based on the model you are using
 constexpr int tensorArenaSize = 8 * 1024;
-byte tensorArena[tensorArenaSize] __attribute__((aligned(16)));*/
+byte tensorArena[tensorArenaSize] __attribute__((aligned(16)));
 const int pinBuzzer = 10;
 // array to map gesture index to a name
 const char *GESTURES[] = {
@@ -74,26 +74,26 @@ void setup()
     }
 
     // initialize the IMU
-    // if (!IMU.begin())
-    // {
-    //     Serial.println("Falló la inicialización del IMU!");
-    //     while (1)
-    //         ;
-    // }
+    if (!IMU.begin())
+    {
+         Serial.println("Falló la inicialización del IMU!");
+         while (1)
+             ;
+     }
 
     // print out the samples rates of the IMUs
-    /*Serial.print("Tasa de muestreo del acelerometro = ");
+    Serial.print("Tasa de muestreo del acelerometro = ");
     Serial.print(IMU.accelerationSampleRate());
     Serial.println(" Hz");
     Serial.print("Tasa de muestreo del giroscopio = ");
     Serial.print(IMU.gyroscopeSampleRate());
-    Serial.println(" Hz");*/
+    Serial.println(" Hz");
 
     Serial.println();
 
     // get the TFL representation of the model byte array
-    //tflModel = tflite::GetModel(model);
-    /*if (tflModel->version() != TFLITE_SCHEMA_VERSION)
+    tflModel = tflite::GetModel(model);
+    if (tflModel->version() != TFLITE_SCHEMA_VERSION)
     {
         Serial.println("Model schema mismatch!");
         while (1)
@@ -108,7 +108,7 @@ void setup()
 
     // Get pointers for the model's input and output tensors
     tflInputTensor = tflInterpreter->input(0);
-    tflOutputTensor = tflInterpreter->output(0);*/
+    tflOutputTensor = tflInterpreter->output(0);
     
 }
 
@@ -162,7 +162,7 @@ void loop()
   }  
   //delay(20);
 
-    /*float aX, aY, aZ, gX, gY, gZ;
+    float aX, aY, aZ, gX, gY, gZ;
 
     // wait for significant motion
     while (samplesRead == numSamples)
@@ -206,7 +206,7 @@ void loop()
             tflInputTensor->data.f[samplesRead * 6 + 5] = (gZ + 2000.0) / 4000.0;
 
             samplesRead++;
-            //digitalWrite(10, LOW);
+            digitalWrite(10, LOW);
             //digitalWrite(8, LOW);
             if (samplesRead == numSamples)
             {
@@ -230,14 +230,14 @@ void loop()
                     {
                         lcd.clear();
                         Serial.println("Caida");
-                        lcd.print("Caida detectada")
+                        lcd.print("Caida detectada");
                         sonarBuzzer();
                     }
                 }
                 Serial.println();
             }
         }
-    }*/
+    }
 }
 
 void sonarBuzzer(){
